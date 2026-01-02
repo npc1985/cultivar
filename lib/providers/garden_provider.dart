@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart' as path;
 import '../models/garden.dart';
 import '../models/plant.dart';
 import 'plant_provider.dart';
@@ -21,10 +22,10 @@ class GardenDatabase {
 
   static Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
-    final path = '$dbPath/$_dbName';
+    final dbFilePath = path.join(dbPath, _dbName);
 
     return openDatabase(
-      path,
+      dbFilePath,
       version: 3,
       onCreate: (db, version) async {
         await db.execute('''

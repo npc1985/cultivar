@@ -7,6 +7,7 @@ import '../widgets/frost_warning_card.dart';
 import '../providers/frost_provider.dart';
 import '../providers/cultivation_provider.dart';
 import 'settings_screen.dart';
+import 'calendar_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -79,7 +80,11 @@ class _GardenTab extends ConsumerWidget {
             IconButton(
               icon: const Icon(Icons.calendar_month),
               onPressed: () {
-                // TODO: Show planting calendar
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const CalendarScreen(),
+                  ),
+                );
               },
               tooltip: 'Planting Calendar',
             ),
