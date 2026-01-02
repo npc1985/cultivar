@@ -52,8 +52,38 @@ Each plant entry includes:
 
 - **Multi-Garden Support** — Manage multiple plots, beds, or properties
 - **Planting History** — Track what worked (and what didn't)
-- **Harvest Tracking** — Log yields and improve year over year
+- **Enhanced Harvest Tracking** — Comprehensive harvest logging with:
+  - Multiple harvest types (fruit/flower, leaves, trim, roots, whole plant)
+  - Wet and dry weight tracking for drying crops
+  - Preservation method tracking (fresh, dried, frozen, canned, cured, trimmed)
+  - Perfect for cannabis, herbs, vegetables, and specialized crops
+- **Photo Documentation** — Visual progress tracking with:
+  - Growth stage categorization (seedling, vegetative, flowering, fruiting, harvest)
+  - Camera and gallery integration
+  - Photo captions and notes
+  - Complete visual history of your plants
+- **Task Management** — Never miss a critical gardening window:
+  - Task completion tracking
+  - Persistent state across app restarts
+  - Upcoming tasks filtered intelligently
 - **Notes & Observations** — Document your growing wisdom
+
+### 📈 Analytics & Insights
+
+- **Performance Dashboard** — Data-driven insights into your garden:
+  - Success rate tracking (completed vs failed crops)
+  - Year-over-year comparisons
+  - Harvest trends over time
+  - Seasonal distribution analysis
+  - Top performing plants by success rate and yield
+  - Space efficiency by location
+- **Interactive Charts** — Visualize your data:
+  - Success rate pie charts
+  - Harvest trends line graphs
+  - Seasonal distribution bar charts
+  - Yield summaries by plant type
+  - Photo documentation insights by growth stage
+- **Historical Analysis** — Learn from your garden's history to optimize future plantings
 
 ## 🌾 Ancient Wisdom, Modern Tools
 
@@ -153,6 +183,9 @@ Bee balm, Borage, Catmint, Coneflower, Lavender, plus native wildflowers and tre
 - **Riverpod** — Robust state management
 - **SQLite** — Local-first data storage
 - **Geolocator** — Location services for frost zone detection
+- **Image Picker** — Camera and gallery integration for photo documentation
+- **FL Chart** — Interactive data visualization and analytics charts
+- **Path Provider** — Cross-platform file storage for photos and data
 
 ### Architecture
 
@@ -172,7 +205,19 @@ lib/
 - **PlantDatabaseService** — Manages the extensive plant catalog
 - **FrostService** — Calculates location-specific frost dates
 - **CultivationService** — Handles planting schedules and companion recommendations
-- **GardenProvider** — Manages garden plots and plantings
+- **GardenProvider** — Manages garden plots, plantings, and harvest tracking
+- **PhotoService** — Image capture, storage, and management for crop documentation
+- **AnalyticsProvider** — Comprehensive garden performance metrics and insights
+
+### Recent Updates
+
+**v1.0 - Major Feature Release**
+- ✅ Photo documentation system with growth stage tracking
+- ✅ Analytics dashboard with interactive charts and insights
+- ✅ Enhanced harvest tracking (wet/dry weight, harvest types, preservation methods)
+- ✅ Task completion tracking with persistent state
+- ✅ Interactive planting calendar with full-screen view
+- ✅ Support for specialized crops including cannabis cultivation
 
 ## 🌻 Contributing
 
@@ -226,5 +271,91 @@ And to you, dear cultivator, for choosing to grow. May your harvest be abundant.
 8. **Give It Time** — Good gardens, like good wine, improve with age
 
 **Remember**: You're not just growing plants. You're cultivating life, participating in the ancient human story, and investing in a healthier, more beautiful world.
+
+---
+
+## 🚀 Future Development Roadmap
+
+### High Priority
+
+- **Weather Integration** — Real-time weather alerts and forecasting
+  - Frost warnings and precipitation forecasts
+  - Temperature and humidity tracking
+  - Integration with local weather stations
+  - Smart watering recommendations based on rainfall
+
+- **Community Features** — Connect with other growers
+  - Share successful plant varieties and growing tips
+  - Local seed swaps and plant exchanges
+  - Regional growing calendars based on community data
+  - Discussion forums by plant type and growing zone
+
+- **Pest & Disease Management** — Identify and treat garden problems
+  - Visual identification guide with photos
+  - Organic treatment recommendations
+  - Integrated pest management strategies
+  - Companion planting for pest prevention
+
+### Medium Priority
+
+- **Soil Management** — Track soil health and amendments
+  - Soil test result tracking
+  - Fertilizer and amendment scheduling
+  - Compost batch management
+  - pH and nutrient level history
+
+- **Advanced Planning Tools**
+  - Garden bed layout designer with crop rotation
+  - 3D garden visualization
+  - Succession planting automation
+  - Multi-year planning with crop rotation rules
+
+- **Export & Sharing**
+  - PDF garden plans and reports
+  - CSV export for harvest data
+  - Share gardens with family/friends
+  - Print-friendly planting schedules
+
+- **Notifications & Reminders**
+  - Push notifications for upcoming tasks
+  - Watering reminders based on weather
+  - Harvest window alerts
+  - Seasonal task checklists
+
+### Future Enhancements
+
+- **Smart Integrations**
+  - IoT sensor integration (soil moisture, temperature)
+  - Automatic irrigation control
+  - Time-lapse photo generation from growth stages
+  - AI-powered plant health assessment
+
+- **Marketplace Features**
+  - Buy/sell seeds and plants locally
+  - Equipment and supply marketplace
+  - Local farmers market finder
+  - CSA (Community Supported Agriculture) integration
+
+- **Educational Content**
+  - Video tutorials and guides
+  - Expert growing courses
+  - Plant breeding basics
+  - Permaculture design principles
+
+- **Accessibility & Localization**
+  - Multi-language support
+  - Voice commands and screen reader optimization
+  - Offline mode enhancements
+  - Regional plant database expansions
+
+- **Data Science & ML**
+  - Predictive yield modeling
+  - Optimal planting date recommendations based on historical data
+  - Plant disease detection via photo analysis
+  - Personalized growing advice based on your success patterns
+
+### Community Contributions Welcome!
+
+Have an idea not on this list? We'd love to hear it! Open an issue or submit a PR. The best features often come from the community of growers using the app every day.
 
 Happy Growing! 🌿
