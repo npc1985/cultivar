@@ -16,6 +16,7 @@ class GardenDatabase {
   static const _locationsTable = 'garden_locations';
   static const _completedTasksTable = 'completed_tasks';
   static const _harvestsTable = 'harvests';
+  static const _photosTable = 'crop_photos';
 
   static Future<Database> get database async {
     _database ??= await _initDatabase();
@@ -28,7 +29,7 @@ class GardenDatabase {
 
     return openDatabase(
       dbFilePath,
-      version: 6,
+      version: 7,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE $_tableName (
@@ -90,6 +91,24 @@ class GardenDatabase {
         await db.execute('''
           CREATE INDEX idx_harvests_date ON $_harvestsTable (harvest_date)
         ''');
+        await db.execute('''
+          CREATE TABLE $_photosTable (
+            id TEXT PRIMARY KEY,
+            crop_id TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            captured_at TEXT NOT NULL,
+            stage TEXT,
+            caption TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (crop_id) REFERENCES $_tableName (id) ON DELETE CASCADE
+          )
+        ''');
+        await db.execute('''
+          CREATE INDEX idx_photos_crop_id ON $_photosTable (crop_id)
+        ''');
+        await db.execute('''
+          CREATE INDEX idx_photos_captured_at ON $_photosTable (captured_at)
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -142,6 +161,27 @@ class GardenDatabase {
           await db.execute('ALTER TABLE $_harvestsTable ADD COLUMN harvest_type TEXT');
           await db.execute('ALTER TABLE $_harvestsTable ADD COLUMN wet_weight REAL');
           await db.execute('ALTER TABLE $_harvestsTable ADD COLUMN wet_weight_unit TEXT');
+        }
+        if (oldVersion < 7) {
+          // Add crop photos table
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS $_photosTable (
+              id TEXT PRIMARY KEY,
+              crop_id TEXT NOT NULL,
+              file_path TEXT NOT NULL,
+              captured_at TEXT NOT NULL,
+              stage TEXT,
+              caption TEXT,
+              created_at TEXT NOT NULL,
+              FOREIGN KEY (crop_id) REFERENCES $_tableName (id) ON DELETE CASCADE
+            )
+          ''');
+          await db.execute('''
+            CREATE INDEX IF NOT EXISTS idx_photos_crop_id ON $_photosTable (crop_id)
+          ''');
+          await db.execute('''
+            CREATE INDEX IF NOT EXISTS idx_photos_captured_at ON $_photosTable (captured_at)
+          ''');
         }
       },
     );
@@ -302,6 +342,51 @@ class GardenDatabase {
   static Future<void> deleteHarvestsForCrop(String cropId) async {
     final db = await database;
     await db.delete(_harvestsTable, where: 'crop_id = ?', whereArgs: [cropId]);
+  }
+
+  // Photo CRUD operations
+  static Future<List<CropPhoto>> getAllPhotos() async {
+    final db = await database;
+    final maps = await db.query(_photosTable, orderBy: 'captured_at DESC');
+    return maps.map((map) => CropPhoto.fromJson(map)).toList();
+  }
+
+  static Future<List<CropPhoto>> getPhotosForCrop(String cropId) async {
+    final db = await database;
+    final maps = await db.query(
+      _photosTable,
+      where: 'crop_id = ?',
+      whereArgs: [cropId],
+      orderBy: 'captured_at ASC',
+    );
+    return maps.map((map) => CropPhoto.fromJson(map)).toList();
+  }
+
+  static Future<void> insertPhoto(CropPhoto photo) async {
+    final db = await database;
+    final data = photo.toJson();
+    data['created_at'] = DateTime.now().toIso8601String();
+    await db.insert(_photosTable, data);
+  }
+
+  static Future<void> updatePhoto(CropPhoto photo) async {
+    final db = await database;
+    await db.update(
+      _photosTable,
+      photo.toJson(),
+      where: 'id = ?',
+      whereArgs: [photo.id],
+    );
+  }
+
+  static Future<void> deletePhoto(String id) async {
+    final db = await database;
+    await db.delete(_photosTable, where: 'id = ?', whereArgs: [id]);
+  }
+
+  static Future<void> deletePhotosForCrop(String cropId) async {
+    final db = await database;
+    await db.delete(_photosTable, where: 'crop_id = ?', whereArgs: [cropId]);
   }
 }
 
@@ -776,4 +861,71 @@ final harvestsWithDetailsProvider = Provider<List<HarvestWithDetails>>((ref) {
     loading: () => [],
     error: (_, __) => [],
   );
+});
+
+// ==================== Photo Management ====================
+
+/// State notifier for managing crop photos
+class PhotoNotifier extends AsyncNotifier<List<CropPhoto>> {
+  @override
+  Future<List<CropPhoto>> build() async {
+    return GardenDatabase.getAllPhotos();
+  }
+
+  /// Add a new photo
+  Future<void> addPhoto(CropPhoto photo) async {
+    await GardenDatabase.insertPhoto(photo);
+    state = AsyncData(await GardenDatabase.getAllPhotos());
+  }
+
+  /// Update an existing photo
+  Future<void> updatePhoto(CropPhoto photo) async {
+    await GardenDatabase.updatePhoto(photo);
+    state = AsyncData(await GardenDatabase.getAllPhotos());
+  }
+
+  /// Delete a photo
+  Future<void> deletePhoto(String photoId) async {
+    await GardenDatabase.deletePhoto(photoId);
+    state = AsyncData(await GardenDatabase.getAllPhotos());
+  }
+
+  /// Quick add photo with current time
+  Future<void> quickAddPhoto({
+    required String cropId,
+    required String filePath,
+    PhotoStage? stage,
+    String? caption,
+  }) async {
+    final photo = CropPhoto(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      cropId: cropId,
+      filePath: filePath,
+      capturedAt: DateTime.now(),
+      stage: stage,
+      caption: caption,
+    );
+    await addPhoto(photo);
+  }
+}
+
+/// Main photos provider
+final photosProvider = AsyncNotifierProvider<PhotoNotifier, List<CropPhoto>>(() {
+  return PhotoNotifier();
+});
+
+/// Photos for a specific crop
+final photosForCropProvider = Provider.family<List<CropPhoto>, String>((ref, cropId) {
+  final photosAsync = ref.watch(photosProvider);
+  return photosAsync.when(
+    data: (photos) => photos.where((p) => p.cropId == cropId).toList(),
+    loading: () => [],
+    error: (_, __) => [],
+  );
+});
+
+/// Photo count by crop
+final photoCountByCropProvider = Provider.family<int, String>((ref, cropId) {
+  final photos = ref.watch(photosForCropProvider(cropId));
+  return photos.length;
 });

@@ -450,6 +450,92 @@ enum HarvestType {
   final String emoji;
 }
 
+/// Growth stage of a crop when photo was taken
+enum PhotoStage {
+  seedling('Seedling', '🌱'),
+  vegetative('Vegetative', '🌿'),
+  flowering('Flowering', '🌸'),
+  fruiting('Fruiting', '🍅'),
+  harvest('Harvest', '🧺'),
+  other('Other', '📷');
+
+  const PhotoStage(this.displayName, this.emoji);
+  final String displayName;
+  final String emoji;
+}
+
+/// A photo of a planted crop at a specific growth stage
+class CropPhoto {
+  const CropPhoto({
+    required this.id,
+    required this.cropId,
+    required this.filePath,
+    required this.capturedAt,
+    this.stage,
+    this.caption,
+    this.createdAt,
+  });
+
+  final String id;
+  final String cropId; // References PlantedCrop.id
+  final String filePath; // Local file path to the photo
+  final DateTime capturedAt; // When the photo was taken
+  final PhotoStage? stage; // Growth stage
+  final String? caption; // Optional user caption
+  final DateTime? createdAt; // When record was created
+
+  CropPhoto copyWith({
+    String? id,
+    String? cropId,
+    String? filePath,
+    DateTime? capturedAt,
+    PhotoStage? stage,
+    String? caption,
+    DateTime? createdAt,
+  }) {
+    return CropPhoto(
+      id: id ?? this.id,
+      cropId: cropId ?? this.cropId,
+      filePath: filePath ?? this.filePath,
+      capturedAt: capturedAt ?? this.capturedAt,
+      stage: stage ?? this.stage,
+      caption: caption ?? this.caption,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'crop_id': cropId,
+      'file_path': filePath,
+      'captured_at': capturedAt.toIso8601String(),
+      'stage': stage?.name,
+      'caption': caption,
+      'created_at': createdAt?.toIso8601String(),
+    };
+  }
+
+  factory CropPhoto.fromJson(Map<String, dynamic> json) {
+    return CropPhoto(
+      id: json['id'] as String,
+      cropId: json['crop_id'] as String,
+      filePath: json['file_path'] as String,
+      capturedAt: DateTime.parse(json['captured_at'] as String),
+      stage: json['stage'] != null
+          ? PhotoStage.values.firstWhere(
+              (s) => s.name == json['stage'],
+              orElse: () => PhotoStage.other,
+            )
+          : null,
+      caption: json['caption'] as String?,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : null,
+    );
+  }
+}
+
 /// A single harvest event from a planted crop
 class Harvest {
   const Harvest({

@@ -11,6 +11,7 @@ import '../providers/garden_provider.dart';
 import '../models/garden.dart';
 import 'settings_screen.dart';
 import 'calendar_screen.dart';
+import 'analytics_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -31,6 +32,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           _GardenTab(),
           _PlantDatabaseTab(),
           _TasksTab(),
+          AnalyticsScreen(),
           SettingsScreen(),
         ],
       ),
@@ -54,6 +56,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             icon: Icon(Icons.checklist_outlined),
             selectedIcon: Icon(Icons.checklist),
             label: 'Tasks',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.analytics_outlined),
+            selectedIcon: Icon(Icons.analytics),
+            label: 'Analytics',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),
