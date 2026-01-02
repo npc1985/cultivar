@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/planting_task.dart';
 import '../providers/cultivation_provider.dart';
+import '../providers/garden_provider.dart';
 import '../services/cultivation_service.dart';
 
 /// Section showing upcoming planting tasks
@@ -288,13 +289,13 @@ class TaskCard extends StatelessWidget {
   }
 }
 
-class _TaskDetailSheet extends StatelessWidget {
+class _TaskDetailSheet extends ConsumerWidget {
   const _TaskDetailSheet({required this.task});
 
   final PlantingTask task;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     return Container(
@@ -381,12 +382,35 @@ class _TaskDetailSheet extends StatelessWidget {
 
                 const SizedBox(height: 24),
 
-                // Action button
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Got It'),
+                // Action buttons
+                FilledButton.icon(
+                  onPressed: () async {
+                    await ref.read(completedTaskIdsProvider.notifier).markComplete(task.id);
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('${task.type.emoji} ${task.title} marked as complete!'),
+                          duration: const Duration(seconds: 2),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.check_circle),
+                  label: const Text('Mark as Complete'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Close'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 48),
                   ),
                 ),
               ],
