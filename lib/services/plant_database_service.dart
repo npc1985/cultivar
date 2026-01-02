@@ -10,6 +10,9 @@ import '../data/plants/herbs.dart';
 import '../data/plants/roses.dart';
 import '../data/plants/bees.dart';
 import '../data/plants/medicinal.dart';
+import '../data/plants/cannabis.dart';
+import '../data/plants/ancient_grains.dart';
+import '../data/plants/cover_crops.dart';
 
 /// Service for accessing and querying the plant database
 class PlantDatabaseService {
@@ -28,6 +31,9 @@ class PlantDatabaseService {
       ...roses,
       ...bees,
       ...medicinalPlants,
+      ...cannabis,
+      ...ancientGrains,
+      ...coverCrops,
     ];
     return _allPlants!;
   }
@@ -240,6 +246,9 @@ class PlantDatabaseService {
       'roses': roses.length,
       'bees': bees.length,
       'medicinal': getMedicinalPlants().length,
+      'cannabis': cannabis.length,
+      'ancient_grains': ancientGrains.length,
+      'cover_crops': coverCrops.length,
       'native': getNativePlants().length,
       'heirloom': getHeirloomPlants().length,
       'indoor': getIndoorGrowablePlants().length,
