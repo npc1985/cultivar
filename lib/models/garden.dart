@@ -422,6 +422,8 @@ enum PreservationMethod {
   frozen('Frozen', '❄️'),
   canned('Canned', '🥫'),
   dried('Dried', '🌾'),
+  curing('Curing', '⏳'),
+  trimmed('Trimmed', '✂️'),
   fermented('Fermented', '🫙'),
   stored('Cold Storage', '🧊'),
   shared('Shared/Gifted', '🎁'),
@@ -434,6 +436,20 @@ enum PreservationMethod {
   final String emoji;
 }
 
+/// Type/part of plant harvested
+enum HarvestType {
+  fruit('Fruit/Flower', '🌸'),
+  leaves('Leaves', '🍃'),
+  trim('Trim/Sugar Leaves', '✂️'),
+  roots('Roots', '🥕'),
+  wholePlant('Whole Plant', '🌿'),
+  mixed('Mixed', '🌾');
+
+  const HarvestType(this.displayName, this.emoji);
+  final String displayName;
+  final String emoji;
+}
+
 /// A single harvest event from a planted crop
 class Harvest {
   const Harvest({
@@ -442,6 +458,9 @@ class Harvest {
     required this.harvestDate,
     required this.quantity,
     required this.unit,
+    this.harvestType,
+    this.wetWeight,
+    this.wetWeightUnit,
     this.quality,
     this.preservationMethods = const [],
     this.notes,
@@ -451,8 +470,11 @@ class Harvest {
   final String id;
   final String cropId; // References PlantedCrop.id
   final DateTime harvestDate;
-  final double quantity; // Numeric amount
+  final double quantity; // Numeric amount (dry weight for plants that need drying)
   final HarvestUnit unit;
+  final HarvestType? harvestType; // Type/part harvested (flower, trim, leaves, etc.)
+  final double? wetWeight; // Optional wet weight for plants like cannabis
+  final HarvestUnit? wetWeightUnit;
   final HarvestQuality? quality;
   final List<PreservationMethod> preservationMethods;
   final String? notes;
@@ -460,10 +482,25 @@ class Harvest {
 
   /// Format quantity with unit
   String get quantityDisplay {
-    if (quantity == quantity.truncateToDouble()) {
-      return '${quantity.toInt()} ${unit.abbreviation}';
+    final dryQty = quantity == quantity.truncateToDouble()
+        ? '${quantity.toInt()} ${unit.abbreviation}'
+        : '${quantity.toStringAsFixed(1)} ${unit.abbreviation}';
+
+    // Include wet weight if available
+    if (wetWeight != null && wetWeightUnit != null) {
+      final wetQty = wetWeight == wetWeight!.truncateToDouble()
+          ? '${wetWeight!.toInt()} ${wetWeightUnit!.abbreviation}'
+          : '${wetWeight!.toStringAsFixed(1)} ${wetWeightUnit!.abbreviation}';
+      return '$dryQty (wet: $wetQty)';
     }
-    return '${quantity.toStringAsFixed(1)} ${unit.abbreviation}';
+
+    return dryQty;
+  }
+
+  /// Format with type if available
+  String get fullDisplay {
+    final typePrefix = harvestType != null ? '${harvestType!.emoji} ' : '';
+    return '$typePrefix$quantityDisplay';
   }
 
   Harvest copyWith({
@@ -472,6 +509,9 @@ class Harvest {
     DateTime? harvestDate,
     double? quantity,
     HarvestUnit? unit,
+    HarvestType? harvestType,
+    double? wetWeight,
+    HarvestUnit? wetWeightUnit,
     HarvestQuality? quality,
     List<PreservationMethod>? preservationMethods,
     String? notes,
@@ -483,6 +523,9 @@ class Harvest {
       harvestDate: harvestDate ?? this.harvestDate,
       quantity: quantity ?? this.quantity,
       unit: unit ?? this.unit,
+      harvestType: harvestType ?? this.harvestType,
+      wetWeight: wetWeight ?? this.wetWeight,
+      wetWeightUnit: wetWeightUnit ?? this.wetWeightUnit,
       quality: quality ?? this.quality,
       preservationMethods: preservationMethods ?? this.preservationMethods,
       notes: notes ?? this.notes,
@@ -497,6 +540,9 @@ class Harvest {
       'harvest_date': harvestDate.toIso8601String(),
       'quantity': quantity,
       'unit': unit.name,
+      'harvest_type': harvestType?.name,
+      'wet_weight': wetWeight,
+      'wet_weight_unit': wetWeightUnit?.name,
       'quality': quality?.name,
       'preservation_methods': preservationMethods.map((m) => m.name).join(','),
       'notes': notes,
@@ -514,6 +560,19 @@ class Harvest {
         (u) => u.name == json['unit'],
         orElse: () => HarvestUnit.pounds,
       ),
+      harvestType: json['harvest_type'] != null
+          ? HarvestType.values.firstWhere(
+              (t) => t.name == json['harvest_type'],
+              orElse: () => HarvestType.fruit,
+            )
+          : null,
+      wetWeight: json['wet_weight'] != null ? (json['wet_weight'] as num).toDouble() : null,
+      wetWeightUnit: json['wet_weight_unit'] != null
+          ? HarvestUnit.values.firstWhere(
+              (u) => u.name == json['wet_weight_unit'],
+              orElse: () => HarvestUnit.grams,
+            )
+          : null,
       quality: json['quality'] != null
           ? HarvestQuality.values.firstWhere(
               (q) => q.name == json['quality'],

@@ -250,21 +250,50 @@ class _HarvestHistoryScreenState extends ConsumerState<HarvestHistoryScreen> {
 
             const SizedBox(height: 12),
 
-            // Date
-            Row(
+            // Date and Type
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
               children: [
-                Icon(
-                  Icons.calendar_today,
-                  size: 16,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.calendar_today,
+                      size: 16,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _formatDate(harvest.harvestDate),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  _formatDate(harvest.harvestDate),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                if (harvest.harvestType != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          harvest.harvestType!.emoji,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          harvest.harvestType!.displayName,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
               ],
             ),
 

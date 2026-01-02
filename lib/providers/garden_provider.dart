@@ -28,7 +28,7 @@ class GardenDatabase {
 
     return openDatabase(
       dbFilePath,
-      version: 5,
+      version: 6,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE $_tableName (
@@ -74,6 +74,9 @@ class GardenDatabase {
             harvest_date TEXT NOT NULL,
             quantity REAL NOT NULL,
             unit TEXT NOT NULL,
+            harvest_type TEXT,
+            wet_weight REAL,
+            wet_weight_unit TEXT,
             quality TEXT,
             preservation_methods TEXT,
             notes TEXT,
@@ -133,6 +136,12 @@ class GardenDatabase {
           await db.execute('''
             CREATE INDEX IF NOT EXISTS idx_harvests_date ON $_harvestsTable (harvest_date)
           ''');
+        }
+        if (oldVersion < 6) {
+          // Add harvest type and wet weight columns
+          await db.execute('ALTER TABLE $_harvestsTable ADD COLUMN harvest_type TEXT');
+          await db.execute('ALTER TABLE $_harvestsTable ADD COLUMN wet_weight REAL');
+          await db.execute('ALTER TABLE $_harvestsTable ADD COLUMN wet_weight_unit TEXT');
         }
       },
     );
@@ -626,6 +635,9 @@ class HarvestNotifier extends AsyncNotifier<List<Harvest>> {
     required String cropId,
     required double quantity,
     required HarvestUnit unit,
+    HarvestType? harvestType,
+    double? wetWeight,
+    HarvestUnit? wetWeightUnit,
     HarvestQuality? quality,
     List<PreservationMethod>? preservationMethods,
     String? notes,
@@ -636,6 +648,9 @@ class HarvestNotifier extends AsyncNotifier<List<Harvest>> {
       harvestDate: DateTime.now(),
       quantity: quantity,
       unit: unit,
+      harvestType: harvestType,
+      wetWeight: wetWeight,
+      wetWeightUnit: wetWeightUnit,
       quality: quality,
       preservationMethods: preservationMethods ?? [],
       notes: notes,

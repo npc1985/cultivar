@@ -1124,15 +1124,20 @@ class _AddHarvestDialog extends ConsumerStatefulWidget {
 class _AddHarvestDialogState extends ConsumerState<_AddHarvestDialog> {
   final _formKey = GlobalKey<FormState>();
   final _quantityController = TextEditingController();
+  final _wetWeightController = TextEditingController();
   final _notesController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
   HarvestUnit _selectedUnit = HarvestUnit.pounds;
+  HarvestUnit _wetWeightUnit = HarvestUnit.grams;
+  HarvestType? _selectedType;
   HarvestQuality? _selectedQuality = HarvestQuality.good;
   final Set<PreservationMethod> _selectedMethods = {};
+  bool _showWetWeight = false;
 
   @override
   void dispose() {
     _quantityController.dispose();
+    _wetWeightController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -1216,6 +1221,91 @@ class _AddHarvestDialogState extends ConsumerState<_AddHarvestDialog> {
                       },
                     ),
                   ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Wet weight toggle (for cannabis, etc.)
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Track wet weight (for drying plants)'),
+                value: _showWetWeight,
+                onChanged: (value) => setState(() => _showWetWeight = value ?? false),
+              ),
+
+              // Wet weight input
+              if (_showWetWeight) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: TextFormField(
+                        controller: _wetWeightController,
+                        decoration: const InputDecoration(
+                          labelText: 'Wet Weight',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: DropdownButtonFormField<HarvestUnit>(
+                        value: _wetWeightUnit,
+                        decoration: const InputDecoration(
+                          labelText: 'Unit',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: HarvestUnit.values.map((unit) {
+                          return DropdownMenuItem(
+                            value: unit,
+                            child: Text(unit.displayName),
+                          );
+                        }).toList(),
+                        onChanged: (unit) {
+                          if (unit != null) {
+                            setState(() => _wetWeightUnit = unit);
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Harvest Type
+              Text(
+                'Harvest Type',
+                style: theme.textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilterChip(
+                    label: const Text('Not specified'),
+                    selected: _selectedType == null,
+                    onSelected: (_) => setState(() => _selectedType = null),
+                  ),
+                  ...HarvestType.values.map((type) {
+                    return FilterChip(
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(type.emoji),
+                          const SizedBox(width: 4),
+                          Text(type.displayName),
+                        ],
+                      ),
+                      selected: _selectedType == type,
+                      onSelected: (_) => setState(() => _selectedType = type),
+                    );
+                  }),
                 ],
               ),
 
@@ -1322,6 +1412,9 @@ class _AddHarvestDialogState extends ConsumerState<_AddHarvestDialog> {
 
     final quantity = double.parse(_quantityController.text);
     final notes = _notesController.text.trim();
+    final wetWeight = _showWetWeight && _wetWeightController.text.isNotEmpty
+        ? double.tryParse(_wetWeightController.text)
+        : null;
 
     final harvest = Harvest(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -1329,6 +1422,9 @@ class _AddHarvestDialogState extends ConsumerState<_AddHarvestDialog> {
       harvestDate: _selectedDate,
       quantity: quantity,
       unit: _selectedUnit,
+      harvestType: _selectedType,
+      wetWeight: wetWeight,
+      wetWeightUnit: wetWeight != null ? _wetWeightUnit : null,
       quality: _selectedQuality,
       preservationMethods: _selectedMethods.toList(),
       notes: notes.isEmpty ? null : notes,
