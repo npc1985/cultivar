@@ -82,213 +82,249 @@ class _PlantBrowserState extends ConsumerState<PlantBrowser> {
       }).toList();
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Header
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Row(
+    return CustomScrollView(
+      slivers: [
+        // App bar with search action
+        SliverAppBar.large(
+          title: const Text('Plant Database'),
+          actions: [
+            IconButton(
+              icon: Icon(
+                _showSearch ? Icons.close : Icons.search,
+                color: theme.colorScheme.primary,
+              ),
+              onPressed: () {
+                setState(() {
+                  _showSearch = !_showSearch;
+                  if (!_showSearch) {
+                    _searchController.clear();
+                  }
+                });
+              },
+              tooltip: 'Search plants',
+            ),
+          ],
+        ),
+
+        // Stats and content
+        SliverToBoxAdapter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              // Database stats
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                child: Text(
+                  '${stats['total']} plants · ${stats['medicinal']} medicinal · ${stats['native']} native',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ),
+
+              // Search bar (when visible)
+              if (_showSearch)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  child: TextField(
+                    controller: _searchController,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: 'Search plants...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {});
+                              },
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: theme.colorScheme.surfaceContainerHighest,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+
+              // Category chips
+              SizedBox(
+                height: 44,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   children: [
-                    Text(
-                      'Plant Database',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+                    // "All" chip
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        label: Text('All (${stats['total']})'),
+                        selected: _selectedCategory == null && _specialFilter == null,
+                        onSelected: (_) => setState(() {
+                          _selectedCategory = null;
+                          _specialFilter = null;
+                        }),
+                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                        selectedColor: theme.colorScheme.primaryContainer,
+                        side: BorderSide.none,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
                       ),
                     ),
-                    Text(
-                      '${stats['total']} plants · ${stats['medicinal']} medicinal · ${stats['native']} native',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
-                    ),
+                    // Category chips
+                    ...PlantCategory.values.map((category) {
+                      final count = _getCategoryCount(category, stats);
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: PlantCategoryChip(
+                          category: category,
+                          isSelected: _selectedCategory == category,
+                          count: count,
+                          onTap: () => setState(() {
+                            _selectedCategory = _selectedCategory == category ? null : category;
+                          }),
+                        ),
+                      );
+                    }),
                   ],
                 ),
               ),
-              IconButton(
-                icon: Icon(
-                  _showSearch ? Icons.close : Icons.search,
-                  color: theme.colorScheme.primary,
-                ),
-                onPressed: () {
-                  setState(() {
-                    _showSearch = !_showSearch;
-                    if (!_showSearch) {
-                      _searchController.clear();
-                    }
-                  });
-                },
-              ),
-            ],
-          ),
-        ),
 
-        // Search bar (when visible)
-        if (_showSearch)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search plants...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {});
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: theme.colorScheme.surfaceContainerHighest,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              ),
-              onChanged: (_) => setState(() {}),
-            ),
-          ),
+              const SizedBox(height: 8),
 
-        // Category chips
-        SizedBox(
-          height: 44,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            children: [
-              // "All" chip
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: FilterChip(
-                  label: Text('All (${stats['total']})'),
-                  selected: _selectedCategory == null && _specialFilter == null,
-                  onSelected: (_) => setState(() {
-                    _selectedCategory = null;
-                    _specialFilter = null;
-                  }),
-                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                  selectedColor: theme.colorScheme.primaryContainer,
-                  side: BorderSide.none,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-              ),
-              // Category chips
-              ...PlantCategory.values.map((category) {
-                final count = _getCategoryCount(category, stats);
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: PlantCategoryChip(
-                    category: category,
-                    isSelected: _selectedCategory == category,
-                    count: count,
-                    onTap: () => setState(() {
-                      _selectedCategory = _selectedCategory == category ? null : category;
-                    }),
-                  ),
-                );
-              }),
-            ],
-          ),
-        ),
-
-        // Special filter chips (Medicinal, Native, Indoor)
-        SizedBox(
-          height: 40,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            children: [
-              ..._SpecialFilter.values.map((filter) {
-                final count = switch (filter) {
-                  _SpecialFilter.medicinal => stats['medicinal'] ?? 0,
-                  _SpecialFilter.native => stats['native'] ?? 0,
-                  _SpecialFilter.indoor => stats['indoor'] ?? 0,
-                };
-                final color = switch (filter) {
-                  _SpecialFilter.medicinal => Colors.red.shade400,
-                  _SpecialFilter.native => Colors.green.shade600,
-                  _SpecialFilter.indoor => Colors.blue.shade400,
-                };
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(filter.emoji),
-                        const SizedBox(width: 4),
-                        Text(filter.label),
-                        const SizedBox(width: 4),
-                        Text(
-                          '($count)',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: _specialFilter == filter
-                                ? color
-                                : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              // Special filter chips (Medicinal, Native, Indoor)
+              SizedBox(
+                height: 40,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  children: [
+                    ..._SpecialFilter.values.map((filter) {
+                      final count = switch (filter) {
+                        _SpecialFilter.medicinal => stats['medicinal'] ?? 0,
+                        _SpecialFilter.native => stats['native'] ?? 0,
+                        _SpecialFilter.indoor => stats['indoor'] ?? 0,
+                      };
+                      final color = switch (filter) {
+                        _SpecialFilter.medicinal => Colors.red.shade400,
+                        _SpecialFilter.native => Colors.green.shade600,
+                        _SpecialFilter.indoor => Colors.blue.shade400,
+                      };
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: FilterChip(
+                          label: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(filter.emoji),
+                              const SizedBox(width: 4),
+                              Text(filter.label),
+                              const SizedBox(width: 4),
+                              Text(
+                                '($count)',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: _specialFilter == filter
+                                      ? color
+                                      : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                ),
+                              ),
+                            ],
+                          ),
+                          selected: _specialFilter == filter,
+                          onSelected: (_) => setState(() {
+                            _specialFilter = _specialFilter == filter ? null : filter;
+                          }),
+                          backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                          selectedColor: color.withValues(alpha: 0.2),
+                          checkmarkColor: color,
+                          side: BorderSide.none,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
                           ),
                         ),
-                      ],
-                    ),
-                    selected: _specialFilter == filter,
-                    onSelected: (_) => setState(() {
-                      _specialFilter = _specialFilter == filter ? null : filter;
+                      );
                     }),
-                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                    selectedColor: color.withValues(alpha: 0.2),
-                    checkmarkColor: color,
-                    side: BorderSide.none,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Results count
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  _getResultsText(displayPlants.length),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
-                );
-              }),
+                ),
+              ),
+
+              const SizedBox(height: 8),
             ],
           ),
         ),
 
-        const SizedBox(height: 8),
-
-        // Results count
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            _getResultsText(displayPlants.length),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+        // Plant list
+        if (displayPlants.isEmpty)
+          SliverFillRemaining(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.search_off,
+                    size: 48,
+                    color: theme.colorScheme.outline,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No plants found',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.outline,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final plant = displayPlants[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: PlantCard(
+                      plant: plant,
+                      onTap: () {
+                        showPlantDetailSheet(
+                          context,
+                          plant,
+                          onAddToGarden: widget.onAddToGarden != null
+                              ? () => widget.onAddToGarden!(plant)
+                              : null,
+                        );
+                      },
+                      isInGarden: widget.gardenPlantIds.contains(plant.id),
+                    ),
+                  );
+                },
+                childCount: displayPlants.length,
+              ),
             ),
           ),
-        ),
-
-        const SizedBox(height: 8),
-
-        // Plant list - wrapped in Expanded to take remaining space
-        Expanded(
-          child: PlantGrid(
-            plants: displayPlants,
-            gardenPlantIds: widget.gardenPlantIds,
-            onPlantTap: (plant) {
-              showPlantDetailSheet(
-                context,
-                plant,
-                onAddToGarden: widget.onAddToGarden != null
-                    ? () => widget.onAddToGarden!(plant)
-                    : null,
-              );
-            },
-          ),
-        ),
       ],
     );
   }
