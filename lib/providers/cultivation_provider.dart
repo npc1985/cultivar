@@ -13,23 +13,35 @@ final cultivationServiceProvider = Provider<CultivationService>((ref) {
   return const CultivationService();
 });
 
-/// All upcoming planting tasks
+/// All upcoming planting tasks (excluding completed)
 final upcomingTasksProvider = Provider<List<PlantingTask>>((ref) {
   final service = ref.watch(cultivationServiceProvider);
   final frostDatesAsync = ref.watch(frostDatesProvider);
   final cropsAsync = ref.watch(gardenProvider);
   final plants = ref.watch(allPlantsProvider);
+  final completedIdsAsync = ref.watch(completedTaskIdsProvider);
 
   return frostDatesAsync.when(
     data: (frostDates) {
       if (frostDates == null) return [];
 
       return cropsAsync.when(
-        data: (crops) => service.generateUpcomingTasks(
-          frostDates: frostDates,
-          plantedCrops: crops,
-          plantDatabase: plants,
-        ),
+        data: (crops) {
+          final allTasks = service.generateUpcomingTasks(
+            frostDates: frostDates,
+            plantedCrops: crops,
+            plantDatabase: plants,
+          );
+
+          // Filter out completed tasks
+          return completedIdsAsync.when(
+            data: (completedIds) {
+              return allTasks.where((task) => !completedIds.contains(task.id)).toList();
+            },
+            loading: () => allTasks,
+            error: (_, _) => allTasks,
+          );
+        },
         loading: () => [],
         error: (_, _) => [],
       );

@@ -14,6 +14,7 @@ class GardenDatabase {
   static const _dbName = 'garden.db';
   static const _tableName = 'planted_crops';
   static const _locationsTable = 'garden_locations';
+  static const _completedTasksTable = 'completed_tasks';
 
   static Future<Database> get database async {
     _database ??= await _initDatabase();
@@ -26,7 +27,7 @@ class GardenDatabase {
 
     return openDatabase(
       dbFilePath,
-      version: 3,
+      version: 4,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE $_tableName (
@@ -59,6 +60,12 @@ class GardenDatabase {
             created_at TEXT NOT NULL
           )
         ''');
+        await db.execute('''
+          CREATE TABLE $_completedTasksTable (
+            task_id TEXT PRIMARY KEY,
+            completed_at TEXT NOT NULL
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -73,6 +80,14 @@ class GardenDatabase {
               zone TEXT,
               icon TEXT,
               created_at TEXT NOT NULL
+            )
+          ''');
+        }
+        if (oldVersion < 4) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS $_completedTasksTable (
+              task_id TEXT PRIMARY KEY,
+              completed_at TEXT NOT NULL
             )
           ''');
         }
@@ -151,6 +166,34 @@ class GardenDatabase {
   static Future<void> deleteAllCrops() async {
     final db = await database;
     await db.delete(_tableName);
+  }
+
+  // Completed task operations
+  static Future<Set<String>> getCompletedTaskIds() async {
+    final db = await database;
+    final maps = await db.query(_completedTasksTable);
+    return maps.map((map) => map['task_id'] as String).toSet();
+  }
+
+  static Future<void> markTaskComplete(String taskId) async {
+    final db = await database;
+    await db.insert(
+      _completedTasksTable,
+      {
+        'task_id': taskId,
+        'completed_at': DateTime.now().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  static Future<void> unmarkTaskComplete(String taskId) async {
+    final db = await database;
+    await db.delete(
+      _completedTasksTable,
+      where: 'task_id = ?',
+      whereArgs: [taskId],
+    );
   }
 }
 
@@ -427,4 +470,27 @@ final cropsByLocationProvider = Provider<Map<String?, List<PlantedCrop>>>((ref) 
     loading: () => {},
     error: (_, _) => {},
   );
+});
+
+/// Task completion notifier
+class TaskCompletionNotifier extends AsyncNotifier<Set<String>> {
+  @override
+  Future<Set<String>> build() async {
+    return GardenDatabase.getCompletedTaskIds();
+  }
+
+  Future<void> markComplete(String taskId) async {
+    await GardenDatabase.markTaskComplete(taskId);
+    state = AsyncData(await GardenDatabase.getCompletedTaskIds());
+  }
+
+  Future<void> unmarkComplete(String taskId) async {
+    await GardenDatabase.unmarkTaskComplete(taskId);
+    state = AsyncData(await GardenDatabase.getCompletedTaskIds());
+  }
+}
+
+/// Completed task IDs provider
+final completedTaskIdsProvider = AsyncNotifierProvider<TaskCompletionNotifier, Set<String>>(() {
+  return TaskCompletionNotifier();
 });

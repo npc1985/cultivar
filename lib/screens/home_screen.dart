@@ -6,6 +6,8 @@ import '../widgets/task_reminder_card.dart' show UpcomingTasksSection;
 import '../widgets/frost_warning_card.dart';
 import '../providers/frost_provider.dart';
 import '../providers/cultivation_provider.dart';
+import '../providers/garden_provider.dart';
+import '../models/garden.dart';
 import 'settings_screen.dart';
 import 'calendar_screen.dart';
 
@@ -148,12 +150,40 @@ class _GardenTab extends ConsumerWidget {
 }
 
 /// Plant database tab
-class _PlantDatabaseTab extends StatelessWidget {
+class _PlantDatabaseTab extends ConsumerWidget {
   const _PlantDatabaseTab();
 
   @override
-  Widget build(BuildContext context) {
-    return const PlantBrowser();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final gardenPlantIds = ref.watch(gardenPlantIdsProvider);
+
+    return PlantBrowser(
+      gardenPlantIds: gardenPlantIds,
+      onAddToGarden: (plant) async {
+        // Create a new planted crop with 'planned' status
+        final crop = PlantedCrop(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          plantId: plant.id,
+          status: CropStatus.planned,
+          quantity: 1,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+
+        await ref.read(gardenProvider.notifier).addCrop(crop);
+
+        // Show confirmation
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${plant.emoji} ${plant.commonName} added to your garden!'),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
+    );
   }
 }
 
