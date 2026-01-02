@@ -31,8 +31,100 @@
 
   <title>cultivar</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
+    #loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #2d5016 0%, #4a7c2c 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    #loading-logo {
+      width: 120px;
+      height: 120px;
+      margin-bottom: 30px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.8; }
+    }
+
+    .spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid rgba(255, 255, 255, 0.2);
+      border-top-color: #8bc34a;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    #loading-text {
+      margin-top: 20px;
+      color: #e8f5e9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+  </style>
 </head>
 <body>
+  <div id="loading">
+    <svg id="loading-logo" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <!-- Green circular background -->
+      <circle cx="100" cy="100" r="100" fill="#4a7c2c"/>
+
+      <!-- Plant stem -->
+      <rect x="90" y="60" width="20" height="90" rx="10" fill="#8d6e63"/>
+
+      <!-- Soil/ground -->
+      <ellipse cx="100" cy="150" rx="45" ry="15" fill="#5d4037"/>
+
+      <!-- Left leaf -->
+      <path d="M 100 75 Q 70 60 75 50 Q 80 55 100 70 Z" fill="#9ccc65"/>
+
+      <!-- Right leaf -->
+      <path d="M 100 75 Q 130 60 125 50 Q 120 55 100 70 Z" fill="#9ccc65"/>
+
+      <!-- Leaf top circle -->
+      <circle cx="100" cy="55" r="8" fill="#8d6e63"/>
+    </svg>
+
+    <div class="spinner"></div>
+    <div id="loading-text">Loading Cultivar...</div>
+  </div>
+
   <script src="flutter_bootstrap.js" async></script>
+
+  <script>
+    // Remove loading screen when Flutter is ready
+    window.addEventListener('flutter-first-frame', function() {
+      const loading = document.getElementById('loading');
+      if (loading) {
+        loading.style.transition = 'opacity 0.3s ease-out';
+        loading.style.opacity = '0';
+        setTimeout(() => loading.remove(), 300);
+      }
+    });
+  </script>
 </body>
 </html>
