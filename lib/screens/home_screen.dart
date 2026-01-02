@@ -4,6 +4,7 @@ import '../widgets/garden_overview.dart';
 import '../widgets/plant_browser.dart';
 import '../widgets/task_reminder_card.dart' show UpcomingTasksSection;
 import '../widgets/frost_warning_card.dart';
+import '../widgets/harvest_history_screen.dart';
 import '../providers/frost_provider.dart';
 import '../providers/cultivation_provider.dart';
 import '../providers/garden_provider.dart';
@@ -138,6 +139,9 @@ class _GardenTab extends ConsumerWidget {
                 // Frost warning if any
                 const FrostWarningCard(),
                 const SizedBox(height: 16),
+                // Harvest summary
+                const _HarvestSummaryCard(),
+                const SizedBox(height: 16),
                 // Garden overview
                 const GardenOverview(),
               ],
@@ -267,5 +271,114 @@ class _TasksTab extends ConsumerWidget {
         ),
       ],
     );
+  }
+}
+
+/// Harvest summary card showing recent harvests and quick link to history
+class _HarvestSummaryCard extends ConsumerWidget {
+  const _HarvestSummaryCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final recentHarvests = ref.watch(recentHarvestsProvider);
+    final stats = ref.watch(harvestStatsProvider);
+
+    // Don't show if no harvests
+    if ((stats['totalHarvests'] ?? 0) == 0) {
+      return const SizedBox.shrink();
+    }
+
+    return Card(
+      child: InkWell(
+        onTap: () => openHarvestHistory(context),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  const Text('🧺', style: TextStyle(fontSize: 24)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Recent Harvests',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          '${stats['thisMonth']} this month • ${stats['totalHarvests']} total',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
+
+              if (recentHarvests.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+
+                // Recent harvest items (max 3)
+                ...recentHarvests.take(3).map((harvest) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        if (harvest.quality != null)
+                          Text(
+                            harvest.quality!.emoji,
+                            style: const TextStyle(fontSize: 20),
+                          )
+                        else
+                          const Icon(Icons.check_circle, size: 20, color: Colors.green),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            harvest.quantityDisplay,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          _formatDate(harvest.harvestDate),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date).inDays;
+
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+    if (diff < 7) return '$diff days ago';
+
+    return '${date.month}/${date.day}';
   }
 }

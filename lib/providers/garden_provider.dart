@@ -15,6 +15,7 @@ class GardenDatabase {
   static const _tableName = 'planted_crops';
   static const _locationsTable = 'garden_locations';
   static const _completedTasksTable = 'completed_tasks';
+  static const _harvestsTable = 'harvests';
 
   static Future<Database> get database async {
     _database ??= await _initDatabase();
@@ -27,7 +28,7 @@ class GardenDatabase {
 
     return openDatabase(
       dbFilePath,
-      version: 4,
+      version: 5,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE $_tableName (
@@ -66,6 +67,26 @@ class GardenDatabase {
             completed_at TEXT NOT NULL
           )
         ''');
+        await db.execute('''
+          CREATE TABLE $_harvestsTable (
+            id TEXT PRIMARY KEY,
+            crop_id TEXT NOT NULL,
+            harvest_date TEXT NOT NULL,
+            quantity REAL NOT NULL,
+            unit TEXT NOT NULL,
+            quality TEXT,
+            preservation_methods TEXT,
+            notes TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (crop_id) REFERENCES $_tableName (id) ON DELETE CASCADE
+          )
+        ''');
+        await db.execute('''
+          CREATE INDEX idx_harvests_crop_id ON $_harvestsTable (crop_id)
+        ''');
+        await db.execute('''
+          CREATE INDEX idx_harvests_date ON $_harvestsTable (harvest_date)
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -89,6 +110,28 @@ class GardenDatabase {
               task_id TEXT PRIMARY KEY,
               completed_at TEXT NOT NULL
             )
+          ''');
+        }
+        if (oldVersion < 5) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS $_harvestsTable (
+              id TEXT PRIMARY KEY,
+              crop_id TEXT NOT NULL,
+              harvest_date TEXT NOT NULL,
+              quantity REAL NOT NULL,
+              unit TEXT NOT NULL,
+              quality TEXT,
+              preservation_methods TEXT,
+              notes TEXT,
+              created_at TEXT NOT NULL,
+              FOREIGN KEY (crop_id) REFERENCES $_tableName (id) ON DELETE CASCADE
+            )
+          ''');
+          await db.execute('''
+            CREATE INDEX IF NOT EXISTS idx_harvests_crop_id ON $_harvestsTable (crop_id)
+          ''');
+          await db.execute('''
+            CREATE INDEX IF NOT EXISTS idx_harvests_date ON $_harvestsTable (harvest_date)
           ''');
         }
       },
@@ -194,6 +237,62 @@ class GardenDatabase {
       where: 'task_id = ?',
       whereArgs: [taskId],
     );
+  }
+
+  // Harvest CRUD operations
+  static Future<List<Harvest>> getAllHarvests() async {
+    final db = await database;
+    final maps = await db.query(_harvestsTable, orderBy: 'harvest_date DESC');
+    return maps.map((map) => Harvest.fromJson(map)).toList();
+  }
+
+  static Future<List<Harvest>> getHarvestsForCrop(String cropId) async {
+    final db = await database;
+    final maps = await db.query(
+      _harvestsTable,
+      where: 'crop_id = ?',
+      whereArgs: [cropId],
+      orderBy: 'harvest_date DESC',
+    );
+    return maps.map((map) => Harvest.fromJson(map)).toList();
+  }
+
+  static Future<List<Harvest>> getHarvestsInDateRange(DateTime start, DateTime end) async {
+    final db = await database;
+    final maps = await db.query(
+      _harvestsTable,
+      where: 'harvest_date >= ? AND harvest_date <= ?',
+      whereArgs: [start.toIso8601String(), end.toIso8601String()],
+      orderBy: 'harvest_date DESC',
+    );
+    return maps.map((map) => Harvest.fromJson(map)).toList();
+  }
+
+  static Future<void> insertHarvest(Harvest harvest) async {
+    final db = await database;
+    final data = harvest.toJson();
+    data['created_at'] = DateTime.now().toIso8601String();
+    await db.insert(_harvestsTable, data);
+  }
+
+  static Future<void> updateHarvest(Harvest harvest) async {
+    final db = await database;
+    await db.update(
+      _harvestsTable,
+      harvest.toJson(),
+      where: 'id = ?',
+      whereArgs: [harvest.id],
+    );
+  }
+
+  static Future<void> deleteHarvest(String id) async {
+    final db = await database;
+    await db.delete(_harvestsTable, where: 'id = ?', whereArgs: [id]);
+  }
+
+  static Future<void> deleteHarvestsForCrop(String cropId) async {
+    final db = await database;
+    await db.delete(_harvestsTable, where: 'crop_id = ?', whereArgs: [cropId]);
   }
 }
 
@@ -493,4 +592,173 @@ class TaskCompletionNotifier extends AsyncNotifier<Set<String>> {
 /// Completed task IDs provider
 final completedTaskIdsProvider = AsyncNotifierProvider<TaskCompletionNotifier, Set<String>>(() {
   return TaskCompletionNotifier();
+});
+
+// ==================== Harvest Management ====================
+
+/// State notifier for managing harvests
+class HarvestNotifier extends AsyncNotifier<List<Harvest>> {
+  @override
+  Future<List<Harvest>> build() async {
+    return GardenDatabase.getAllHarvests();
+  }
+
+  /// Add a new harvest
+  Future<void> addHarvest(Harvest harvest) async {
+    await GardenDatabase.insertHarvest(harvest);
+    state = AsyncData(await GardenDatabase.getAllHarvests());
+  }
+
+  /// Update an existing harvest
+  Future<void> updateHarvest(Harvest harvest) async {
+    await GardenDatabase.updateHarvest(harvest);
+    state = AsyncData(await GardenDatabase.getAllHarvests());
+  }
+
+  /// Delete a harvest
+  Future<void> deleteHarvest(String harvestId) async {
+    await GardenDatabase.deleteHarvest(harvestId);
+    state = AsyncData(await GardenDatabase.getAllHarvests());
+  }
+
+  /// Quick add harvest with current date
+  Future<void> quickAddHarvest({
+    required String cropId,
+    required double quantity,
+    required HarvestUnit unit,
+    HarvestQuality? quality,
+    List<PreservationMethod>? preservationMethods,
+    String? notes,
+  }) async {
+    final harvest = Harvest(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      cropId: cropId,
+      harvestDate: DateTime.now(),
+      quantity: quantity,
+      unit: unit,
+      quality: quality,
+      preservationMethods: preservationMethods ?? [],
+      notes: notes,
+    );
+    await addHarvest(harvest);
+  }
+}
+
+/// Main harvests provider
+final harvestsProvider = AsyncNotifierProvider<HarvestNotifier, List<Harvest>>(() {
+  return HarvestNotifier();
+});
+
+/// Harvests for a specific crop
+final harvestsForCropProvider = Provider.family<List<Harvest>, String>((ref, cropId) {
+  final harvestsAsync = ref.watch(harvestsProvider);
+  return harvestsAsync.when(
+    data: (harvests) => harvests.where((h) => h.cropId == cropId).toList(),
+    loading: () => [],
+    error: (_, __) => [],
+  );
+});
+
+/// Total harvest quantity by unit for a crop
+final totalHarvestByCropProvider = Provider.family<Map<HarvestUnit, double>, String>((ref, cropId) {
+  final harvests = ref.watch(harvestsForCropProvider(cropId));
+  final totals = <HarvestUnit, double>{};
+
+  for (final harvest in harvests) {
+    totals[harvest.unit] = (totals[harvest.unit] ?? 0) + harvest.quantity;
+  }
+
+  return totals;
+});
+
+/// Recent harvests (last 30 days)
+final recentHarvestsProvider = Provider<List<Harvest>>((ref) {
+  final harvestsAsync = ref.watch(harvestsProvider);
+  final cutoff = DateTime.now().subtract(const Duration(days: 30));
+
+  return harvestsAsync.when(
+    data: (harvests) => harvests.where((h) => h.harvestDate.isAfter(cutoff)).toList(),
+    loading: () => [],
+    error: (_, __) => [],
+  );
+});
+
+/// Harvest statistics
+final harvestStatsProvider = Provider<Map<String, dynamic>>((ref) {
+  final harvestsAsync = ref.watch(harvestsProvider);
+
+  return harvestsAsync.when(
+    data: (harvests) {
+      if (harvests.isEmpty) {
+        return {
+          'totalHarvests': 0,
+          'totalCrops': 0,
+          'thisWeek': 0,
+          'thisMonth': 0,
+          'thisYear': 0,
+        };
+      }
+
+      final now = DateTime.now();
+      final weekAgo = now.subtract(const Duration(days: 7));
+      final monthAgo = now.subtract(const Duration(days: 30));
+      final yearStart = DateTime(now.year, 1, 1);
+
+      return {
+        'totalHarvests': harvests.length,
+        'totalCrops': harvests.map((h) => h.cropId).toSet().length,
+        'thisWeek': harvests.where((h) => h.harvestDate.isAfter(weekAgo)).length,
+        'thisMonth': harvests.where((h) => h.harvestDate.isAfter(monthAgo)).length,
+        'thisYear': harvests.where((h) => h.harvestDate.isAfter(yearStart)).length,
+        'earliestHarvest': harvests.last.harvestDate,
+        'latestHarvest': harvests.first.harvestDate,
+      };
+    },
+    loading: () => {'totalHarvests': 0},
+    error: (_, __) => {'totalHarvests': 0},
+  );
+});
+
+/// Enhanced harvest with crop and plant data
+class HarvestWithDetails {
+  final Harvest harvest;
+  final PlantedCrop? crop;
+  final Plant? plant;
+
+  HarvestWithDetails({
+    required this.harvest,
+    this.crop,
+    this.plant,
+  });
+}
+
+/// Harvests with full crop and plant details
+final harvestsWithDetailsProvider = Provider<List<HarvestWithDetails>>((ref) {
+  final harvestsAsync = ref.watch(harvestsProvider);
+  final cropsAsync = ref.watch(gardenProvider);
+  final allPlants = ref.watch(allPlantsProvider);
+
+  return harvestsAsync.when(
+    data: (harvests) {
+      return cropsAsync.when(
+        data: (crops) {
+          return harvests.map((harvest) {
+            final crop = crops.where((c) => c.id == harvest.cropId).firstOrNull;
+            final plant = crop != null
+                ? allPlants.where((p) => p.id == crop.plantId).firstOrNull
+                : null;
+            return HarvestWithDetails(
+              harvest: harvest,
+              crop: crop,
+              plant: plant,
+            );
+          }).toList();
+        },
+        loading: () => harvests.map((h) => HarvestWithDetails(harvest: h)).toList(),
+        error: (_, __) => harvests.map((h) => HarvestWithDetails(harvest: h)).toList(),
+      );
+    },
+    loading: () => [],
+    error: (_, __) => [],
+  );
 });

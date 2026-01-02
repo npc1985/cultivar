@@ -385,3 +385,153 @@ class UserGarden {
     );
   }
 }
+
+/// Unit of measurement for harvest quantities
+enum HarvestUnit {
+  pounds('lbs', 'Pounds'),
+  kilograms('kg', 'Kilograms'),
+  ounces('oz', 'Ounces'),
+  grams('g', 'Grams'),
+  pieces('pcs', 'Pieces'),
+  bunches('bunches', 'Bunches'),
+  baskets('baskets', 'Baskets'),
+  buckets('buckets', 'Buckets'),
+  bags('bags', 'Bags');
+
+  const HarvestUnit(this.abbreviation, this.displayName);
+  final String abbreviation;
+  final String displayName;
+}
+
+/// Quality rating for harvest
+enum HarvestQuality {
+  poor('Poor', '😞', 'Below expectations'),
+  fair('Fair', '😐', 'Acceptable quality'),
+  good('Good', '😊', 'Good quality'),
+  excellent('Excellent', '🤩', 'Outstanding quality');
+
+  const HarvestQuality(this.displayName, this.emoji, this.description);
+  final String displayName;
+  final String emoji;
+  final String description;
+}
+
+/// What was done with the harvest
+enum PreservationMethod {
+  fresh('Fresh/Eaten', '🍽️'),
+  frozen('Frozen', '❄️'),
+  canned('Canned', '🥫'),
+  dried('Dried', '🌾'),
+  fermented('Fermented', '🫙'),
+  stored('Cold Storage', '🧊'),
+  shared('Shared/Gifted', '🎁'),
+  sold('Sold', '💰'),
+  composted('Composted', '♻️'),
+  seeds('Saved Seeds', '🌱');
+
+  const PreservationMethod(this.displayName, this.emoji);
+  final String displayName;
+  final String emoji;
+}
+
+/// A single harvest event from a planted crop
+class Harvest {
+  const Harvest({
+    required this.id,
+    required this.cropId,
+    required this.harvestDate,
+    required this.quantity,
+    required this.unit,
+    this.quality,
+    this.preservationMethods = const [],
+    this.notes,
+    this.createdAt,
+  });
+
+  final String id;
+  final String cropId; // References PlantedCrop.id
+  final DateTime harvestDate;
+  final double quantity; // Numeric amount
+  final HarvestUnit unit;
+  final HarvestQuality? quality;
+  final List<PreservationMethod> preservationMethods;
+  final String? notes;
+  final DateTime? createdAt;
+
+  /// Format quantity with unit
+  String get quantityDisplay {
+    if (quantity == quantity.truncateToDouble()) {
+      return '${quantity.toInt()} ${unit.abbreviation}';
+    }
+    return '${quantity.toStringAsFixed(1)} ${unit.abbreviation}';
+  }
+
+  Harvest copyWith({
+    String? id,
+    String? cropId,
+    DateTime? harvestDate,
+    double? quantity,
+    HarvestUnit? unit,
+    HarvestQuality? quality,
+    List<PreservationMethod>? preservationMethods,
+    String? notes,
+    DateTime? createdAt,
+  }) {
+    return Harvest(
+      id: id ?? this.id,
+      cropId: cropId ?? this.cropId,
+      harvestDate: harvestDate ?? this.harvestDate,
+      quantity: quantity ?? this.quantity,
+      unit: unit ?? this.unit,
+      quality: quality ?? this.quality,
+      preservationMethods: preservationMethods ?? this.preservationMethods,
+      notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'crop_id': cropId,
+      'harvest_date': harvestDate.toIso8601String(),
+      'quantity': quantity,
+      'unit': unit.name,
+      'quality': quality?.name,
+      'preservation_methods': preservationMethods.map((m) => m.name).join(','),
+      'notes': notes,
+      'created_at': createdAt?.toIso8601String(),
+    };
+  }
+
+  factory Harvest.fromJson(Map<String, dynamic> json) {
+    return Harvest(
+      id: json['id'] as String,
+      cropId: json['crop_id'] as String,
+      harvestDate: DateTime.parse(json['harvest_date'] as String),
+      quantity: (json['quantity'] as num).toDouble(),
+      unit: HarvestUnit.values.firstWhere(
+        (u) => u.name == json['unit'],
+        orElse: () => HarvestUnit.pounds,
+      ),
+      quality: json['quality'] != null
+          ? HarvestQuality.values.firstWhere(
+              (q) => q.name == json['quality'],
+              orElse: () => HarvestQuality.good,
+            )
+          : null,
+      preservationMethods: json['preservation_methods'] != null && json['preservation_methods'] != ''
+          ? (json['preservation_methods'] as String).split(',').map((m) {
+              return PreservationMethod.values.firstWhere(
+                (pm) => pm.name == m,
+                orElse: () => PreservationMethod.fresh,
+              );
+            }).toList()
+          : [],
+      notes: json['notes'] as String?,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : null,
+    );
+  }
+}
