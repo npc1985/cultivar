@@ -45,6 +45,12 @@ dependencies:
   # Date/time formatting
   intl: ^0.18.1
 
+  # Photo capture and selection
+  image_picker: ^1.0.7
+
+  # Charts for analytics
+  fl_chart: ^0.66.0
+
   cupertino_icons: ^1.0.8
 
 dev_dependencies:

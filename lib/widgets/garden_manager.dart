@@ -8,6 +8,7 @@ import '../models/plant.dart';
 import '../providers/garden_provider.dart';
 import '../providers/plant_provider.dart';
 import 'plant_detail_sheet.dart';
+import 'crop_photo_gallery.dart';
 
 /// Opens the full garden manager as a bottom sheet
 void openGardenManager(BuildContext context) {
@@ -733,6 +734,11 @@ class _CropDetailSheet extends ConsumerWidget {
 
                 const SizedBox(height: 24),
 
+                // Photo gallery section
+                _buildPhotoGallerySection(context, ref),
+
+                const SizedBox(height: 24),
+
                 // Update status section
                 Text(
                   'Update Status',
@@ -1068,6 +1074,10 @@ class _CropDetailSheet extends ConsumerWidget {
           ),
       ],
     );
+  }
+
+  Widget _buildPhotoGallerySection(BuildContext context, WidgetRef ref) {
+    return CropPhotoGallery(cropId: crop.id);
   }
 
   void _showAddHarvestDialog(BuildContext context, WidgetRef ref) {
