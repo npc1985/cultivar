@@ -728,6 +728,11 @@ class _CropDetailSheet extends ConsumerWidget {
 
                 const SizedBox(height: 24),
 
+                // Harvest section
+                _buildHarvestSection(context, ref),
+
+                const SizedBox(height: 24),
+
                 // Update status section
                 Text(
                   'Update Status',
@@ -896,6 +901,193 @@ class _CropDetailSheet extends ConsumerWidget {
     );
   }
 
+  Widget _buildHarvestSection(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final harvests = ref.watch(harvestsForCropProvider(crop.id));
+    final totals = ref.watch(totalHarvestByCropProvider(crop.id));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '🧺 Harvests',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            FilledButton.tonalIcon(
+              onPressed: () => _showAddHarvestDialog(context, ref),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Record'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                minimumSize: const Size(0, 32),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Total harvests summary
+        if (totals.isNotEmpty) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.green.withValues(alpha: 0.3),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Total Harvested',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.green.shade700,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                ...totals.entries.map((entry) {
+                  final quantity = entry.value;
+                  final displayQty = quantity == quantity.truncateToDouble()
+                      ? quantity.toInt().toString()
+                      : quantity.toStringAsFixed(1);
+                  return Text(
+                    '$displayQty ${entry.key.abbreviation}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: Colors.green.shade800,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Recent harvests list
+        if (harvests.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'No harvests recorded yet',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          )
+        else
+          ...harvests.take(3).map((harvest) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    // Quality emoji
+                    if (harvest.quality != null) ...[
+                      Text(
+                        harvest.quality!.emoji,
+                        style: const TextStyle(fontSize: 20),
+                      ),
+                      const SizedBox(width: 12),
+                    ],
+                    // Harvest info
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            harvest.quantityDisplay,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                size: 12,
+                                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _formatDate(harvest.harvestDate),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (harvest.notes != null && harvest.notes!.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              harvest.notes!,
+                              style: theme.textTheme.bodySmall,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    // Preservation methods
+                    if (harvest.preservationMethods.isNotEmpty)
+                      Text(
+                        harvest.preservationMethods.map((m) => m.emoji).join(' '),
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                  ],
+                ),
+              )),
+
+        // View all link
+        if (harvests.length > 3)
+          TextButton(
+            onPressed: () {
+              // TODO: Navigate to full harvest history
+            },
+            child: Text('View all ${harvests.length} harvests'),
+          ),
+      ],
+    );
+  }
+
+  void _showAddHarvestDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => _AddHarvestDialog(cropId: crop.id, plantName: plant?.commonName),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date).inDays;
+
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+    if (diff < 7) return '$diff days ago';
+
+    return '${date.month}/${date.day}/${date.year}';
+  }
+
   Color _getStatusColor(CropStatus status) {
     return switch (status) {
       CropStatus.planned => Colors.grey.shade600,
@@ -912,5 +1104,346 @@ class _CropDetailSheet extends ConsumerWidget {
       CropStatus.completed => Colors.teal.shade400,
       CropStatus.failed => Colors.red.shade400,
     };
+  }
+}
+
+/// Dialog for adding a new harvest
+class _AddHarvestDialog extends ConsumerStatefulWidget {
+  const _AddHarvestDialog({
+    required this.cropId,
+    this.plantName,
+  });
+
+  final String cropId;
+  final String? plantName;
+
+  @override
+  ConsumerState<_AddHarvestDialog> createState() => _AddHarvestDialogState();
+}
+
+class _AddHarvestDialogState extends ConsumerState<_AddHarvestDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _quantityController = TextEditingController();
+  final _wetWeightController = TextEditingController();
+  final _notesController = TextEditingController();
+  DateTime _selectedDate = DateTime.now();
+  HarvestUnit _selectedUnit = HarvestUnit.pounds;
+  HarvestUnit _wetWeightUnit = HarvestUnit.grams;
+  HarvestType? _selectedType;
+  HarvestQuality? _selectedQuality = HarvestQuality.good;
+  final Set<PreservationMethod> _selectedMethods = {};
+  bool _showWetWeight = false;
+
+  @override
+  void dispose() {
+    _quantityController.dispose();
+    _wetWeightController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      title: Text('Record Harvest - ${widget.plantName ?? 'Crop'}'),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Date picker
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.calendar_today),
+                title: const Text('Harvest Date'),
+                subtitle: Text(_formatDate(_selectedDate)),
+                onTap: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate: _selectedDate,
+                    firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                    lastDate: DateTime.now(),
+                  );
+                  if (date != null) {
+                    setState(() => _selectedDate = date);
+                  }
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              // Quantity and unit
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: TextFormField(
+                      controller: _quantityController,
+                      decoration: const InputDecoration(
+                        labelText: 'Quantity',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Required';
+                        }
+                        if (double.tryParse(value) == null) {
+                          return 'Invalid';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: DropdownButtonFormField<HarvestUnit>(
+                      value: _selectedUnit,
+                      decoration: const InputDecoration(
+                        labelText: 'Unit',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: HarvestUnit.values.map((unit) {
+                        return DropdownMenuItem(
+                          value: unit,
+                          child: Text(unit.displayName),
+                        );
+                      }).toList(),
+                      onChanged: (unit) {
+                        if (unit != null) {
+                          setState(() => _selectedUnit = unit);
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Wet weight toggle (for cannabis, etc.)
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Track wet weight (for drying plants)'),
+                value: _showWetWeight,
+                onChanged: (value) => setState(() => _showWetWeight = value ?? false),
+              ),
+
+              // Wet weight input
+              if (_showWetWeight) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: TextFormField(
+                        controller: _wetWeightController,
+                        decoration: const InputDecoration(
+                          labelText: 'Wet Weight',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: DropdownButtonFormField<HarvestUnit>(
+                        value: _wetWeightUnit,
+                        decoration: const InputDecoration(
+                          labelText: 'Unit',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: HarvestUnit.values.map((unit) {
+                          return DropdownMenuItem(
+                            value: unit,
+                            child: Text(unit.displayName),
+                          );
+                        }).toList(),
+                        onChanged: (unit) {
+                          if (unit != null) {
+                            setState(() => _wetWeightUnit = unit);
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Harvest Type
+              Text(
+                'Harvest Type',
+                style: theme.textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilterChip(
+                    label: const Text('Not specified'),
+                    selected: _selectedType == null,
+                    onSelected: (_) => setState(() => _selectedType = null),
+                  ),
+                  ...HarvestType.values.map((type) {
+                    return FilterChip(
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(type.emoji),
+                          const SizedBox(width: 4),
+                          Text(type.displayName),
+                        ],
+                      ),
+                      selected: _selectedType == type,
+                      onSelected: (_) => setState(() => _selectedType = type),
+                    );
+                  }),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Quality
+              Text(
+                'Quality',
+                style: theme.textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [
+                  FilterChip(
+                    label: const Text('None'),
+                    selected: _selectedQuality == null,
+                    onSelected: (_) => setState(() => _selectedQuality = null),
+                  ),
+                  ...HarvestQuality.values.map((quality) {
+                    return FilterChip(
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(quality.emoji),
+                          const SizedBox(width: 4),
+                          Text(quality.displayName),
+                        ],
+                      ),
+                      selected: _selectedQuality == quality,
+                      onSelected: (_) => setState(() => _selectedQuality = quality),
+                    );
+                  }),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Preservation methods
+              Text(
+                'What did you do with it?',
+                style: theme.textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: PreservationMethod.values.map((method) {
+                  final isSelected = _selectedMethods.contains(method);
+                  return FilterChip(
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(method.emoji),
+                        const SizedBox(width: 4),
+                        Text(method.displayName),
+                      ],
+                    ),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      setState(() {
+                        if (selected) {
+                          _selectedMethods.add(method);
+                        } else {
+                          _selectedMethods.remove(method);
+                        }
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Notes
+              TextFormField(
+                controller: _notesController,
+                decoration: const InputDecoration(
+                  labelText: 'Notes (optional)',
+                  border: OutlineInputBorder(),
+                  hintText: 'Add any notes about this harvest...',
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _saveHarvest,
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _saveHarvest() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final quantity = double.parse(_quantityController.text);
+    final notes = _notesController.text.trim();
+    final wetWeight = _showWetWeight && _wetWeightController.text.isNotEmpty
+        ? double.tryParse(_wetWeightController.text)
+        : null;
+
+    final harvest = Harvest(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      cropId: widget.cropId,
+      harvestDate: _selectedDate,
+      quantity: quantity,
+      unit: _selectedUnit,
+      harvestType: _selectedType,
+      wetWeight: wetWeight,
+      wetWeightUnit: wetWeight != null ? _wetWeightUnit : null,
+      quality: _selectedQuality,
+      preservationMethods: _selectedMethods.toList(),
+      notes: notes.isEmpty ? null : notes,
+    );
+
+    await ref.read(harvestsProvider.notifier).addHarvest(harvest);
+
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Harvest recorded: ${harvest.quantityDisplay}'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.month}/${date.day}/${date.year}';
   }
 }
